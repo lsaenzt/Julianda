@@ -1,72 +1,5 @@
-module Trade
 
-using JSON3, HTTP, Dates
-
-"Detailed Trade struct from Oanda"
-mutable struct trade
-    averageClosePrice # The average closing price of the Trad
-    clientExtensions # The client extensions of the Trade
-    closingTransactionIDs # The IDs of the Transactions that have closed portions of this Trade
-    closeTime # The date/time when the Trade was fully closed
-    currentUnits # Current units of the trade (- is short + is long)
-    dividend # The dividend paid for this Trade
-    financing # The financing paid / collected for this trade
-    id # The id of the trade
-    initialUnits # Initial opening units of the trade (- is short + is long)
-    initialMarginRequired # The margin required at the time the Trade was created
-    instrument # Instrument of the trade
-    marginUsed # Margin currently used by the Trade
-    openTime # The time the trade was opened
-    price # The price the trade is set at
-    realizedPL # The profit / loss of the trade that has been incurred
-    state # current state of the trade
-    takeProfitOrder # Full representation of the Trade’s Take Profit Order
-    stopLossOrder # Full representation of the Trade’s Stop Loss Order
-    trailingStopLossOrder # Full representation of the Trade’s Trailing Stop Loss Order
-    unrealizedPL # The profit / loss of the trade that hasnt been incurred
-    #= Better alternative that requires complete implementation of Order.jl
-    takeProfitOrder::takeProfitOrder
-    stopLossOrder::stopLossOrder
-    trailingStopLossOrder::trailingStopLossOrder
-    =#
-    trade() = new()
-end
-
-
-"Coerce a given 'trade' into its proper types (Used internally)"
-function coerceTrade(trade::trade)
-    RFC = Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sssssssssZ")
-
-    isdefined(trade,:averageClosePrice) && (trade.averageClosePrice = parse(Float32,trade.averageClosePrice))
-    isdefined(trade,:closeTime) && (trade.closeTime = DateTime(first(trade.closeTime,23),RFC))
-    trade.currentUnits = parse(Float32, trade.currentUnits)
-    trade.initialUnits = parse(Float32, trade.initialUnits)
-    trade.initialMarginRequired = parse(Float32,trade.initialMarginRequired)
-    trade.financing = parse(Float32, trade.financing)
-    # ID is left as a string, makes more sense to me for usage
-    isdefined(trade,:marginUsed) && (trade.marginUsed = parse(Float32, trade.marginUsed))
-    trade.openTime = DateTime(first(trade.openTime,23),RFC)
-    trade.price = parse(Float32, trade.price)
-    trade.realizedPL = parse(Float32, trade.realizedPL)
-    isdefined(trade,:unrealizedPL) && (trade.unrealizedPL = parse(Float32, trade.unrealizedPL))
-    #= Requires complete implementation of Order.jl
-    isdefined(trade,:takeProfitOrder) && (trade.takeProfitOrder = coerceTakeProfitOrder(trade.takeProfitOrder))
-    isdefined(trade,:stopLossOrder) && (trade.stopLossOrder = coerceStopLossOrder(trade.stopLossOrder))
-    isdefined(trade,:trailingStopLossOrder) && (trade.trailingStopLossOrder = coerceTrailingStopLossOrder(trade.trailingStopLossOrder))
-    =#
-    return trade
-end
-
-mutable struct trades
-    trades::Vector{trade}
-    lastTransactionID
-
-    trades() = new()
-end
-
-# Declaring JSON3 struct types
-JSON3.StructType(::Type{trades}) = JSON3.Mutable()
-JSON3.StructType(::Type{trade}) = JSON3.Mutable()
+export getTrades, getOpenTrades, getTrade, closeTrade, setTradeOrders
 
 # ------------------------------------------------------------------------------------
 # /accounts/{accountID}/trades Endpoint
@@ -136,15 +69,6 @@ end
 # ------------------------------------------------------------------------------------
 # /accounts/{accountID}/trades/{tradeSpecifier} Endpoint
 # ------------------------------------------------------------------------------------
-mutable struct singleTrade
-    trade::trade
-    lastTransactionID
-
-    singleTrade() = new()
-end
-
-# Declaring JSON3 struct types
-JSON3.StructType(::Type{singleTrade}) = JSON3.Mutable()
 
 """
    getTrade(config::config, tradeID::String)
@@ -174,34 +98,6 @@ end
 # //accounts/{accountID}/trades/{tradeSpecifier}/close Endpoint
 # ------------------------------------------------------------------------------------
 
-# close trade endpoint response struct
-mutable struct closeUnitsResp
-    orderCreateTransaction::Dict{String,Any}
-    orderFillTransaction::Dict{String,Any}
-    orderCancelTransaction::Dict{String,Any}
-    relatedTransactionIDs::Vector{String}
-    lastTransactionID
-
-    closeUnitsResp() = new()
-end
-
-# close trade endpoint request struct
-struct closeUnits
-    units::String
-
-    closeUnits(x::String) = new(x)
-
-    function closeUnits(x::Real)
-        str = string(x)
-        new(str)
-    end
-
-end
-
-# Declaring JSON3 struct types
-JSON3.StructType(::Type{closeUnits}) = JSON3.Struct()
-JSON3.StructType(::Type{closeUnitsResp}) = JSON3.Mutable()
-
 """
     closeTrade(config::config, tradeID::String, units::Union{Real,String}="ALL")
 
@@ -229,32 +125,6 @@ end
 # ------------------------------------------------------------------------------------
 # //accounts/{accountID}/trades/{tradeSpecifier}/clientExtensions Endpoint
 # ------------------------------------------------------------------------------------
-
-# clientExtensions response struct
-mutable struct clientExtensionsResp
-    tradeClientExtensionsModifyTransaction::Dict{String,Any}
-    relatedTransactionIDs::Vector{String}
-    lastTransactionID
-
-    clientExtensionsResp() = new()
-end
-
-# clientExtension request structs
-struct extensions
-    id::String
-    tag::String
-    comment::String
-end
-
-# For JSON parsing
-struct clientExtensions
-    clientExtensions::extensions
-end
-
-# Declaring JSON3 struct types
-JSON3.StructType(::Type{clientExtensions}) = JSON3.Struct()
-JSON3.StructType(::Type{extensions}) = JSON3.Struct()
-JSON3.StructType(::Type{clientExtensionsResp}) = JSON3.Mutable()
 
 """
     clientExtensions(config::config, tradeID::String; clientID::String="", tag::String="", comment::String="")
@@ -285,74 +155,6 @@ end
 # ------------------------------------------------------------------------------------
 # //accounts/{accountID}/trades/{tradeSpecifier}/orders Endpoint
 # ------------------------------------------------------------------------------------
-
-# orders endpoint response struct
-mutable struct tradeOrdersResponse
-    takeProfitOrderCancelTransaction::Dict{String,Any}
-    takeProfitOrderTransaction::Dict{String,Any}
-    takeProfitOrderFillTransaction::Dict{String,Any}
-    takeProfitOrderCreatedCancelTransaction::Dict{String,Any}
-    stopLossOrderCancelTransaction::Dict{String,Any}
-    stopLossOrderTransaction::Dict{String,Any}
-    stopLossOrderCreatedCancelTransaction::Dict{String,Any}
-    trailingStopLossOrderCancelTransaction::Dict{String,Any}
-    trailingStopLossOrderTransaction::Dict{String,Any}
-    relatedTransactionIDs::Vector{String}
-    lastTransactionID
-
-    tradeOrdersResponse() = new()
-end
-
-# orders endpoint request structs
-mutable struct takeProfit
-    price::Real
-    timeInForce::String
-    gtdTime::String
-    # clientExtensions::extensions -> TODO
-    takeProfit() = new()
-end
-
-mutable struct stopLoss
-    price::Real
-    distance::Real
-    timeInForce::String
-    gtdTime::String
-    # clientExtensions::extensions -> TODO
-
-    stopLoss() = new()
-end
-
-mutable struct trailingStopLoss
-    distance::Real
-    timeInForce::String
-    gtdTime::String
-    # clientExtensions::extensions -> TODO
-
-    trailingStopLoss() = new()
-end
-
-mutable struct tradeOrders
-    takeProfit::takeProfit
-    stopLoss::stopLoss
-    trailingStopLoss::trailingStopLoss
-
-    tradeOrders()=new()
-end
-
-# Declaring JSON3 struct types and setting fields to ignore in JSON3.write if # undef
-JSON3.StructType(::Type{tradeOrders}) = JSON3.Mutable()
-JSON3.omitempties(::Type{tradeOrders})=(:takeProfit,:stopLoss,:trailingStopLoss)
-
-JSON3.StructType(::Type{takeProfit}) = JSON3.Mutable()
-JSON3.omitempties(::Type{takeProfit})=(:price,:timeInForce,:gtdTime)
-
-JSON3.StructType(::Type{stopLoss}) = JSON3.Mutable()
-JSON3.omitempties(::Type{stopLoss})=(:price,:distance,:timeInForce,:gtdTime)
-
-JSON3.StructType(::Type{trailingStopLoss}) = JSON3.Mutable()
-JSON3.omitempties(::Type{trailingStopLoss})=(:price,:timeInForce,:gtdTime)
-
-JSON3.StructType(::Type{tradeOrdersResponse}) = JSON3.Mutable()
 
 """
     function setTradeOrders(config::config, tradeID::String; [TP::NamedTuple, SL::NamedTuple, tSL::NamedTuple ])
@@ -423,19 +225,6 @@ function setTradeOrders(config, tradeID::String; TP::NamedTuple=NamedTuple(),SL:
 
 end
 
-# Definition of cancelTradeOrders structs
-mutable struct nullTradeOrders
-    takeProfit
-    stopLoss
-    trailingStopLoss
-
-    nullTradeOrders()=new()
-end
-
-# Declaring JSON3 struct types and setting fields to ignore in JSON3.write if # undef
-JSON3.StructType(::Type{nullTradeOrders}) = JSON3.Mutable()
-JSON3.omitempties(::Type{nullTradeOrders})=(:takeProfit,:stopLoss,:trailingStopLoss)
-
 """
     function cancelTradeOrders(config::config, tradeID::String, orders2cancel::Vector{String})
 
@@ -467,5 +256,3 @@ function cancelTradeOrders(config, tradeID::String, orders2cancel::Vector{String
 
     return JSON3.read(r.body,tradeOrdersResponse)
 end
-
-end # Module

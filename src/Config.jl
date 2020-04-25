@@ -1,7 +1,7 @@
 module Config
 export loadConfig, config
 
-import YAML
+import YAMLP
 
 "Config struct required for connecting to Oanda"
 struct config

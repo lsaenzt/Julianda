@@ -1,103 +1,9 @@
-module Order
-using JSON3, HTTP, Dates
 
-export extensions, clientExtensions, takeProfit, stopLoss, trailingStopLoss # Structs also used in Trade.jl
-#TODO: export user functions
-
-# clientExtension request structs
-struct extensions
-    id::String
-    tag::String
-    comment::String
-end
-
-# For JSON parsing
-struct clientExtensions
-    clientExtensions::extensions
-end
-
-# Declaring JSON3 struct types
-JSON3.StructType(::Type{clientExtensions}) = JSON3.Struct()
-JSON3.StructType(::Type{extensions}) = JSON3.Struct()
-
+export marketOrder, limitOrder, stopOrder, marketIfTouchedOrder, replaceOrder, cancelOrder, getPendingOrders
 
 # ------------------------------------------------------------------------------------
 # /accounts/{accountID}/orders POST Endpoint
 # ------------------------------------------------------------------------------------
-
-# orders endpoint request structs
-mutable struct takeProfit
-    price::Real
-    timeInForce::String
-    gtdTime::String
-    # clientExtensions::extensions -> TODO
-
-    takeProfit() = new()
-end
-
-mutable struct stopLoss
-    price::Real
-    distance::Real 
-    timeInForce::String
-    gtdTime::String
-    # clientExtensions::extensions -> TODO
-
-    stopLoss() = new()
-end
-
-mutable struct trailingStopLoss
-    distance::Real
-    timeInForce::String
-    gtdTime::String
-    # clientExtensions::extensions -> TODO
-
-    trailingStopLoss() = new()
-end
-
-"Detailed OrderRequest struct from Oanda"
-mutable struct orderRequest
-    clientExtensions::clientExtensions 
-    distance # for orders on fill
-    gtdTime
-    instrument # instrument of the order
-    positionFill # Type of position fill on the order
-    price # Price the order is placed at
-    priceBound 
-    stopLossOnFill::stopLoss # Stop loss settings for an order
-    takeProfitOnFill::takeProfit
-    timeInForce # Type of time in force
-    tradeClientExtensions::clientExtensions
-    tradeID::String
-    trailingStopLossOnFill::trailingStopLoss
-    triggerCondition # Trigger condition of the order
-    type # Type of order
-    units # Number of units (negative for a short, positive for a long)
-
-    orderRequest() = new()
-end
-
-"For JSON parsing"
-struct order2send
-    order::orderRequest
-end
-
-# Declaring JSON3 struct types
-
-JSON3.StructType(::Type{takeProfit}) = JSON3.Mutable()
-JSON3.omitempties(::Type{takeProfit})=(:price,:timeInForce,:gtdTime)
-
-JSON3.StructType(::Type{stopLoss}) = JSON3.Mutable()
-JSON3.omitempties(::Type{stopLoss})=(:price,:distance,:timeInForce,:gtdTime)
-
-JSON3.StructType(::Type{trailingStopLoss}) = JSON3.Mutable()
-JSON3.omitempties(::Type{trailingStopLoss})=(:price,:timeInForce,:gtdTime)
-
-JSON3.StructType(::Type{orderRequest}) = JSON3.Mutable()
-JSON3.omitempties(::Type{orderRequest})=(:price, :units, :distance, :priceBound,:triggerCondition,:gtdTime,
-                                         :takeProfitOnFill,:stopLossOnFill,:trailingStopLossOnFill,
-                                         :clientExtensions,:tradeID, :tradeClientExtensions)
-
-JSON3.StructType(::Type{order2send}) = JSON3.Struct()
 
 # market order -----------------------------------------------------------------------
 """
@@ -385,42 +291,6 @@ end
 # /accounts/{accountID}/orders GET Endpoint
 # ------------------------------------------------------------------------------------
 
-mutable struct orders
-    orders::Array{Dict{String,Any},1}
-    lastTransactionID::String
-
-    orders() = new()
-end
-
-# Declaring JSON3 struct types
-JSON3.StructType(::Type{orders}) = JSON3.Mutable()
-
-"Recursive coersion of order Dictionaries to proper Julia types"
-function coerceOrderDict(oDict::Dict{String,Any}) #Also used in getOrder endpoints
-
-    valueFields = ["price","priceBound", "distance","trailingStopValue","initialMaketPrice"]
-
-    timeFields = ["createTime","gtdTime","filledTime","cancelledTime"]
-
-    RFC = Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sssssssssZ")
-
-    for (key, value) in oDict
-        if eltype(value) == Pair{String,Any}
-            oDict[key] = coerceOrderDict(oDict[key]) #Recursion for Dictionaries inside a transaction field
-        elseif eltype(value) == Any #'asks' & 'bids' in 'fullPrice' have an array of liquidity, prices
-            oDict[key] = collect(coerceOrderDict.(oDict[key]))
-        elseif key in valueFields
-            oDict[key] = parse(Float32, value)
-        elseif key == "units" && value != "ALL"
-            oDict[key] = parse(Float32, value)
-        elseif key in timeFields
-            oDict[key] = DateTime(first(value, 23), RFC)
-        end
-    end
-
-    return oDict
-end
-
 """
 getOrders(config, count::Int=50; kwargs...)
 getOrders(config, IDlist::Vector; kwargs...)
@@ -496,15 +366,6 @@ end
 # ------------------------------------------------------------------------------------
 # /accounts/{accountID}/orders/{orderSpecifier} GET Endpoint
 # ------------------------------------------------------------------------------------
-
-mutable struct singleOrder
-    order::Dict{String,Any}
-    lastTransactionID::String
-
-    singleOrder() = new()
-end
-
-JSON3.StructType(::Type{singleOrder}) = JSON3.Mutable()
 
 """
 getOrder(config, orderID)
@@ -647,7 +508,4 @@ function orderClientExtensions(config, orderID::Union{Int,String}; clientID::Str
         ["Authorization" => string("Bearer ", config.token),"Content-Type" => "application/json"], JSON3.write(data))   
 
     return JSON3.read(r.body, Dict{String,Any})
-
 end
-
-end #module
