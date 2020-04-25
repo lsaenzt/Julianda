@@ -1,4 +1,4 @@
-using Test
+using Test, Julianda
 
 @testset "account" begin
     include("account_test.jl")

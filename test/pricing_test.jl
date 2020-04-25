@@ -1,6 +1,7 @@
 using Test, Dates, Julianda
 
-foo = Julianda.Config.loadConfig("../config")
+include("../TraderData.jl")
 
+Julianda.getPrice(foo,["EUR_USD"])
 # Checks for the right response depending on the time
 #TODO: redo pricing tests

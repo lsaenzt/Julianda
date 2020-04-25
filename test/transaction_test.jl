@@ -1,14 +1,14 @@
 using Test, Julianda
 
-foo = Julianda.Config.loadConfig("../config")
+include("../TraderData.jl")
 
-bar = Julianda.Transaction.getTransactionPages(foo)
+bar = Julianda.getTransactionPages(foo)
 @test bar.pageSize == 100
 
-bar = Julianda.Transaction.getTransaction(foo, 1)
-@test bar.transaction["type"] == "CREATE"
+bar = Julianda.getTransaction(foo, 1)
+@test bar["type"] == "CREATE"
 
-bar = Julianda.Transaction.getTransactions(foo, 1, 1)
-@test bar.transactions[1]["type"] == "CREATE"
-bar = Julianda.Transaction.getTransactions(foo, 1)
-@test bar.transactions[1]["type"] == "CLIENT_CONFIGURE"
+bar = Julianda.getTransactions(foo, 1, 1)
+@test bars[1]["type"] == "CREATE"
+bar = Julianda.getTransactions(foo, 1)
+@test bars[1]["type"] == "CLIENT_CONFIGURE"

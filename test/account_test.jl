@@ -1,15 +1,15 @@
 using Test, Julianda
 
-foo = Julianda.Config.loadConfig("../config")
+include("../TraderData.jl")
 
-@test length(Julianda.Account.listAccounts(foo)) != 0
+@test length(Julianda.listAccounts(foo)) != 0
 
-bar = Julianda.Account.listAccounts(foo)
-foo2 = Julianda.Config.changeAccount(foo, bar[1].id)
+bar = Julianda.listAccounts(foo)
+foo2 = Julianda.changeAccount(foo, bar[1].id)
 @test foo2 == foo
-@test Julianda.Config.saveConfig("../config_test", foo)
+@test Julianda.saveConfig("../config_test", foo)
 
-@test typeof(Julianda.Account.getAccount(foo)) == Julianda.Account.account
-@test typeof(Julianda.Account.getAccountSummary(foo)) == Julianda.Account.account
-@test length(Julianda.Account.getAccountInstruments(foo)) != 0
-@test Julianda.Account.setAccountConfig(foo, "Testing", "0.05")
+@test typeof(Julianda.getAccount(foo)) == Julianda
+@test typeof(Julianda.getAccountSummary(foo)) == Julianda
+@test length(Julianda.getAccountInstruments(foo)) != 0
+@test Julianda.setAccountConfig(foo, "Testing", "0.05")

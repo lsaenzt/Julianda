@@ -1,4 +1,3 @@
-module Config
 export loadConfig, config
 
 import YAMLP
@@ -12,6 +11,9 @@ struct config
     account::String # Account being actively used
     datetime::String # Accepted datetime format
 end
+
+# Outer constructors for default settings
+config(t::String, n::String, a::String)= config("api-fxpractice.oanda.com","stream-fxpractice.oanda.com",t,n,a,"RFC3339")
 
 """
     loadConfig(path::String)
@@ -84,6 +86,4 @@ function changeAccount(conf::config, acc::String)
         conf.datetime,
     )
     return temp
-end
-
 end

@@ -3,7 +3,7 @@ module Oanda
 using JSON3, HTTP, Dates, CodecZlib
 
 # User token and operating account
-include("../User.jl")
+include("Config.jl")
 
 # Structs for storing key data and coercion functions
 include("AccountStructs.jl") #Account and instrument Structs

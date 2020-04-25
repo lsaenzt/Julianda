@@ -1,16 +1,17 @@
 using Test, Julianda
 
-foo = Julianda.Config.loadConfig("../config")
+include("../TraderData.jl")
 
-bar = Julianda.Position.listPositions(foo)
+bar = Julianda.listPositions(foo)
 @test length(bar) != 0
 
-bar = Julianda.Position.listOpenPositions(foo)
+bar = Julianda.listOpenPositions(foo)
 @test bar != nothing
 
-bar = Julianda.Position.getPosition(foo, "GBP_USD")
+bar = Julianda.getPosition(foo, "GBP_USD")
+
 @test bar.instrument == "GBP_USD"
 
-@test Julianda.Position.closePosition(foo, "GBP_USD", 50)
+@test Julianda.closePosition(foo, "GBP_USD", 50)
 
-@test Julianda.Position.closePositionFull(foo, "GBP_USD")
+@test Julianda.closePositionFull(foo, "GBP_USD")
